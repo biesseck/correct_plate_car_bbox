@@ -102,12 +102,13 @@ def get_patterns_shapes(car_coords, lp_coords):
     frame_patterns = {}
     frame_patterns['00_car_width'] = car_width
     frame_patterns['01_car_height'] = car_height
-    frame_patterns['02_lp_width'] = lp_width
-    frame_patterns['03_lp_height'] = lp_height
-    frame_patterns['04_width_ratio'] = car_width / lp_width
-    frame_patterns['05_height_ratio'] = car_height / lp_height
-    frame_patterns['06_horiz_posit_ratio'] = car_width / lp_coords['x1']
-    frame_patterns['07_verti_posit_ratio'] = car_height / lp_coords['y1']
+    frame_patterns['02_car_aspect_ratio'] = car_height / car_width
+    frame_patterns['03_lp_width'] = lp_width
+    frame_patterns['04_lp_height'] = lp_height
+    frame_patterns['05_width_ratio'] = car_width / lp_width
+    frame_patterns['06_height_ratio'] = car_height / lp_height
+    frame_patterns['07_horiz_posit_ratio'] = car_width / lp_coords['x1']
+    frame_patterns['08_verti_posit_ratio'] = car_height / lp_coords['y1']
 
     return frame_patterns
 
