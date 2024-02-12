@@ -9,6 +9,7 @@ from datetime import datetime
 import torch
 from torch.utils.tensorboard import SummaryWriter
 
+
 def parse_args():
     return None
 
@@ -132,7 +133,7 @@ def compute_patterns_car_lp_shapes(track_shapes):
         # sys.exit(0)
     # sys.exit(0)
     return frames_patterns
-        
+
 
 def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns):
     for key_pattern in orig_track_patterns[0].keys():
@@ -177,21 +178,23 @@ def main_analyse(args, original_tracks, corrected_tracks_folder, path_save_plots
 
         print('----------')
 
+
+
 if __name__ == '__main__':
     args = parse_args()
 
     original_tracks = [
-        '/home/biesseck/GitHub/bjgbiesseck_correct_plate_car_bbox/vehicle_tracks_valfride/vehicle_000004',
-        '/home/biesseck/GitHub/bjgbiesseck_correct_plate_car_bbox/vehicle_tracks_valfride/vehicle_000006',
-        '/home/biesseck/GitHub/bjgbiesseck_correct_plate_car_bbox/vehicle_tracks_valfride/vehicle_000010',
+        './vehicle_tracks_valfride/vehicle_000004',
+        './vehicle_tracks_valfride/vehicle_000006',
+        './vehicle_tracks_valfride/vehicle_000010',
     ]
 
     corrected_tracks_folder = 'corrected'
 
     # corrected_tracks = [
-    #     '/home/biesseck/GitHub/bjgbiesseck_correct_plate_car_bbox/vehicle_tracks_valfride/corrected/vehicle_000004',
-    #     '/home/biesseck/GitHub/bjgbiesseck_correct_plate_car_bbox/vehicle_tracks_valfride/corrected/vehicle_000006',
-    #     '/home/biesseck/GitHub/bjgbiesseck_correct_plate_car_bbox/vehicle_tracks_valfride/corrected/vehicle_000010',
+    #     './vehicle_tracks_valfride/corrected/vehicle_000004',
+    #     './vehicle_tracks_valfride/corrected/vehicle_000006',
+    #     './vehicle_tracks_valfride/corrected/vehicle_000010',
     # ]
 
     path_save_plots = './logs_analysis'
