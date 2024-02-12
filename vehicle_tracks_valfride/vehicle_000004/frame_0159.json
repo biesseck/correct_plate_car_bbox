@@ -1,0 +1,52 @@
+{
+  "version": "5.3.1",
+  "flags": {},
+  "shapes": [
+    {
+      "label": "car",
+      "points": [
+        [
+          617.5,
+          165.5
+        ],
+        [
+          776.5,
+          326.5
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "rectangle",
+      "flags": {}
+    },
+    {
+      "label": "lp",
+      "points": [
+        [
+          676.00097209136,
+          278.07163055986166
+        ],
+        [
+          733.7016259051394,
+          284.57631532102823
+        ],
+        [
+          733.7433691571466,
+          299.0325968042016
+        ],
+        [
+          676.0427153433673,
+          292.52791204303503
+        ]
+      ],
+      "group_id": null,
+      "description": "",
+      "shape_type": "polygon",
+      "flags": {}
+    }
+  ],
+  "imagePath": "frame_0159.png",
+  "imageData": null,
+  "imageHeight": 960,
+  "imageWidth": 1280
+}
