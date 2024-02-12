@@ -1,3 +1,5 @@
+![Car and License Place measures](/assets/detected_car_lp.png "Detected_Car_and License Plate")
+
 ### 1. MAIN REQUIREMENTS
 - python==3.9
 - numpy==1.26.4
