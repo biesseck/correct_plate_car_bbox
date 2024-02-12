@@ -100,6 +100,15 @@ def get_patterns_shapes(car_coords, lp_coords):
     lp_width = np.linalg.norm(np.array((lp_coords['x2'],lp_coords['y2'])) - np.array((lp_coords['x1'],lp_coords['y1'])))
     lp_height = np.linalg.norm(np.array((lp_coords['x3'],lp_coords['y3'])) - np.array((lp_coords['x2'],lp_coords['y2'])))
 
+    lp_x1_into_bbox_car = lp_coords['x1'] - car_coords['x1']
+    lp_y1_into_bbox_car = lp_coords['y1'] - car_coords['y1']
+    lp_x2_into_bbox_car = lp_coords['x2'] - car_coords['x1']
+    lp_y2_into_bbox_car = lp_coords['y2'] - car_coords['y1']
+    lp_x3_into_bbox_car = lp_coords['x3'] - car_coords['x1']
+    lp_y3_into_bbox_car = lp_coords['y3'] - car_coords['y1']
+    lp_x4_into_bbox_car = lp_coords['x4'] - car_coords['x1']
+    lp_y4_into_bbox_car = lp_coords['y4'] - car_coords['y1']
+
     frame_patterns = {}
     frame_patterns['00_car_width'] = car_width
     frame_patterns['01_car_height'] = car_height
@@ -108,8 +117,16 @@ def get_patterns_shapes(car_coords, lp_coords):
     frame_patterns['04_lp_height'] = lp_height
     frame_patterns['05_width_ratio'] = car_width / lp_width
     frame_patterns['06_height_ratio'] = car_height / lp_height
-    frame_patterns['07_horiz_posit_ratio'] = car_width / lp_coords['x1']
-    frame_patterns['08_verti_posit_ratio'] = car_height / lp_coords['y1']
+    frame_patterns['07_horiz_posit_ratio'] = car_width / lp_x1_into_bbox_car
+    frame_patterns['08_verti_posit_ratio'] = car_height / lp_y1_into_bbox_car
+    frame_patterns['09_lp_x1_into_bbox_car'] = lp_x1_into_bbox_car
+    frame_patterns['10_lp_y1_into_bbox_car'] = lp_y1_into_bbox_car
+    frame_patterns['11_lp_x2_into_bbox_car'] = lp_x2_into_bbox_car
+    frame_patterns['12_lp_y2_into_bbox_car'] = lp_y2_into_bbox_car
+    frame_patterns['13_lp_x3_into_bbox_car'] = lp_x3_into_bbox_car
+    frame_patterns['14_lp_y3_into_bbox_car'] = lp_y3_into_bbox_car
+    frame_patterns['15_lp_x4_into_bbox_car'] = lp_x4_into_bbox_car
+    frame_patterns['16_lp_y4_into_bbox_car'] = lp_y4_into_bbox_car
 
     return frame_patterns
 
@@ -140,8 +157,8 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
         for idx_frame, (orig_track_pattern, corr_track_pattern) in enumerate(zip(orig_track_patterns, corr_track_patterns)):
             writer.add_scalars(f'{track_name}/{key_pattern}',
                 {'orig': orig_track_pattern[key_pattern],
-                'corr': corr_track_pattern[key_pattern],},
-                idx_frame)
+                 'corr': corr_track_pattern[key_pattern]},
+                 idx_frame)
     # sys.exit(0) 
 
 
@@ -175,8 +192,10 @@ def main_analyse(args, original_tracks, corrected_tracks_folder, path_save_plots
 
         print('Saving charts...')
         plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns)
-
         print('----------')
+
+    print(f'Logs saved in \'{path_save_plots}\'')
+    print('----------')
 
 
 
@@ -187,6 +206,7 @@ if __name__ == '__main__':
         './vehicle_tracks_valfride/vehicle_000004',
         './vehicle_tracks_valfride/vehicle_000006',
         './vehicle_tracks_valfride/vehicle_000010',
+        './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition',
     ]
 
     corrected_tracks_folder = 'corrected'
