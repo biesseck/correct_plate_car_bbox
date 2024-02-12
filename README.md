@@ -25,3 +25,4 @@ python analyse_tracks.py
 tensorboard --logdir ./logs_analysis/02122024_105611
 http://localhost:6006
 ```
+![tensorboard view](/assets/tensorboard_view.png "Tensorboard View")
