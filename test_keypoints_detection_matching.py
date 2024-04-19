@@ -243,22 +243,49 @@ def match_keypoints(tracks_data):
         frame0_data[f"match_sift_imagePath={frame0_data['imagePath']}_imagePath={frame1_data['imagePath']}"] = all_matches
 
         good_matches_idx = []
+        good_matches = []
         good_matches_mask = [[0, 0] for i in range(len(all_matches))]
         for i, (m, n) in enumerate(all_matches): 
-            if m.distance < 0.5*n.distance: 
-                good_matches_mask[i] = [1, 0]
+            if m.distance < 0.3*n.distance:
                 good_matches_idx.append(i)
+                good_matches.append(all_matches[i])
+                good_matches_mask[i] = [1, 0]
 
-        # ONLY FOR VISUALIZATION (TESTS)
-        print('len(good_matches_idx):', len(good_matches_idx), '    good_matches_idx:', good_matches_idx)
         image0 = frame0_data['imageData']
         image1 = frame1_data['imageData']
         image0_cpy = image0.copy()
         image1_cpy = image1.copy()
-        image0_cpy = cv2.putText(image0_cpy, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
-        image1_cpy = cv2.putText(image1_cpy, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
         frame0_kps = frame0_data['kps_sift']
         frame1_kps = frame1_data['kps_sift']
+
+        # COMPUTE CENTROIDS
+        centroid_kps_good_matches_frame0 = np.zeros((2,), dtype=np.float32)
+        centroid_kps_good_matches_frame1 = np.zeros((2,), dtype=np.float32)
+        for (good_match, _) in good_matches:
+            kp_good_match_frame0 = frame0_kps[good_match.queryIdx].pt
+            kp_good_match_frame1 = frame1_kps[good_match.trainIdx].pt
+            centroid_kps_good_matches_frame0 += kp_good_match_frame0
+            centroid_kps_good_matches_frame1 += kp_good_match_frame1
+        centroid_kps_good_matches_frame0 /= len(good_matches)
+        centroid_kps_good_matches_frame1 /= len(good_matches)
+        print('centroid_kps_good_matches_frame0:', centroid_kps_good_matches_frame0)
+        print('centroid_kps_good_matches_frame1:', centroid_kps_good_matches_frame1)
+
+        # ONLY FOR VISUALIZATION (TESTS)
+        print('len(good_matches_idx):', len(good_matches_idx), '    good_matches_idx:', good_matches_idx)
+        image0_cpy = cv2.putText(image0_cpy, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
+        image1_cpy = cv2.putText(image1_cpy, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
+
+        for (good_match, _) in good_matches:
+            good_match_frame0_kp = (int(frame0_kps[good_match.queryIdx].pt[0]), int(frame0_kps[good_match.queryIdx].pt[1]))
+            good_match_frame1_kp = (int(frame1_kps[good_match.trainIdx].pt[0]), int(frame1_kps[good_match.trainIdx].pt[1]))
+            image0_cpy = cv2.circle(image0_cpy, center=good_match_frame0_kp, radius=5, color=(0,0,255), thickness=2)
+            image1_cpy = cv2.circle(image1_cpy, center=good_match_frame1_kp, radius=5, color=(127,127,255), thickness=2)
+        # sys.exit(0)
+
+        image0_cpy = cv2.circle(image0_cpy, center=(int(centroid_kps_good_matches_frame0[0]), int(centroid_kps_good_matches_frame0[1])), radius=7, color=(255,0,0), thickness=4)
+        image1_cpy = cv2.circle(image1_cpy, center=(int(centroid_kps_good_matches_frame1[0]), int(centroid_kps_good_matches_frame1[1])), radius=7, color=(255,0,0), thickness=4)
+
         Matched = cv2.drawMatchesKnn(image0_cpy, 
                                      frame0_kps, 
                                      image1_cpy, 
