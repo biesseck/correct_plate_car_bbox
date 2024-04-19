@@ -140,24 +140,81 @@ def get_patterns_shapes(car_coords, lp_coords):
     return frame_patterns
 
 
-def compute_patterns_car_lp_shapes(track_shapes):
+def draw_bbox_car_lp(image, shapes_list, color_bgr=(0,255,0)):
+    for idx_shape, shape in enumerate(shapes_list):
+        points = shape['points']
+        points_int = [[round(coord) for coord in point] for point in points]
+        # print('points_int:', points_int)
+        if shape['shape_type'] == 'rectangle':
+            image = cv2.rectangle(image,points_int[0],points_int[1],color_bgr,2)
+        elif shape['shape_type'] == 'polygon':
+            image = cv2.polylines(image,[np.array(points_int,dtype=np.int32)],True,color_bgr,1)
+    return image
+
+
+def get_patterns_rectang_rectang(bounding_rect, points_rect):
+    pass
+
+
+def get_patterns_rectang_polygon(bounding_rect, points_rect):
+    pass
+
+
+def correct_shapes_from_centroid(frame0_curr_shapes, centroid_good_matches_frame0, bounding_rect_good_matches_frame0,
+                                 frame1_curr_shapes, centroid_good_matches_frame1, bounding_rect_good_matches_frame1):
+    # frame1_corrected_shapes = frame1_curr_shapes
+    for idx_shape, frame0_curr_shape in enumerate(frame0_curr_shapes):
+        frame0_curr_points = frame0_curr_shape['points']
+        if frame0_curr_shape['shape_type'] == 'rectangle':
+            frame0_curr_patterns = get_patterns_rectang_rectang(bounding_rect_good_matches_frame0, frame0_curr_points)
+        elif frame0_curr_shape['shape_type'] == 'polygon':
+            frame0_curr_patterns = get_patterns_rectang_polygon(bounding_rect_good_matches_frame0, frame0_curr_points)
+
+
+def compute_patterns_car_lp_centroid(track_data):
     frames_patterns = []
-    for idx_frame, frame_shape in enumerate(track_shapes):
-        car_shape, lp_shape = frame_shape
-        assert car_shape['label'] == 'car', f'Error, car_shape[\'label\'] != \'car\'. It should be \'car\'.'
-        assert lp_shape['label'] == 'lp', f'Error, lp_shape[\'label\'] != \'lp\'. It should be \'lp\'.'
-        # print('idx_frame:', idx_frame, '    car_shape:', car_shape, '    lp_shape:', lp_shape)
-    
-        car_coords = get_coords_shape_labelme_format(car_shape['points'])
-        lp_coords = get_coords_shape_labelme_format(lp_shape['points'])
-        frame_patterns = get_patterns_shapes(car_coords, lp_coords)
+    for idx_frame in range(len(track_data)-1):
+        frame0_data = track_data[idx_frame]
+        frame1_data = track_data[idx_frame+1]
+        # print('frame0_data.keys():', frame0_data.keys())
+
+        # frame0_descs = frame0_data['descs_sift']
+        # frame1_descs = frame1_data['descs_sift']
+        centroid_good_matches_frame0 = frame0_data['centroid_good_matches_frame']
+        centroid_good_matches_frame1 = frame0_data['centroid_good_matches_frame+1']
+        bounding_rect_good_matches_frame0 = frame0_data['bounding_rect_good_matches_frame']
+        bounding_rect_good_matches_frame1 = frame0_data['bounding_rect_good_matches_frame+1']
+        # frame0_data['bounding_rect_good_matches_frame'] = frame0_bounding_rect_good_matches
+        # frame0_data['bounding_rect_good_matches_frame+1'] = frame1_bounding_rect_good_matches
+
+        frame0_curr_shapes = frame0_data['shapes']
+        frame1_curr_shapes = frame1_data['shapes']
+        # frame1_corrected_shapes = correct_shapes_from_centroid(frame0_curr_shapes, centroid_good_matches_frame0, bounding_rect_good_matches_frame0,
+        #                                                        frame1_curr_shapes, centroid_good_matches_frame1, bounding_rect_good_matches_frame1)
+        # frame1_data['shapes'] = frame1_corrected_shapes
+
+        # ONLY FOR VISUALIZATION (TESTS)
+        image0 = frame0_data['imageData'].copy()
+        image1 = frame1_data['imageData'].copy()
+
+        image0 = draw_bbox_car_lp(image0, frame0_curr_shapes)
+        image1 = draw_bbox_car_lp(image1, frame1_curr_shapes)
+        # image1 = draw_bbox_car_lp(image1, frame1_corrected_shapes)
+
+        image0 = cv2.putText(image0, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
+        image1 = cv2.putText(image1, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
+        image0 = cv2.circle(image0, center=(int(centroid_good_matches_frame0[0]), int(centroid_good_matches_frame0[1])), radius=7, color=(255,0,0), thickness=4)
+        image1 = cv2.circle(image1, center=(int(centroid_good_matches_frame1[0]), int(centroid_good_matches_frame1[1])), radius=7, color=(255,0,0), thickness=4)
         
-        frames_patterns.append(frame_patterns)
-        # print('car_coords:', car_coords)
-        # print('lp_coords:', lp_coords)
-        # print('frame_patterns:', frame_patterns)
-        # sys.exit(0)
-    # sys.exit(0)
+        image0 = cv2.rectangle(image0,bounding_rect_good_matches_frame0[0],bounding_rect_good_matches_frame0[1],(255,0,0),2)
+        image1 = cv2.rectangle(image1,bounding_rect_good_matches_frame1[0],bounding_rect_good_matches_frame1[1],(255,0,0),2)
+
+        image0_1 = np.hstack((image0, image1))
+        image0_1 = cv2.resize(image0_1, (0, 0), fx=0.7, fy=0.7)
+        cv2.imshow('image0_1', image0_1)
+        cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    sys.exit(0)
     return frames_patterns
 
 
@@ -225,22 +282,22 @@ def filter_keypoints(tracks_data):
     return tracks_data
 
 
-def match_keypoints(tracks_data):
+def match_keypoints(track_data):
     # bf = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
     index_params = dict(algorithm=0, trees=20) 
     search_params = dict(checks=150)   # or pass empty dictionary
     flann = cv2.FlannBasedMatcher(index_params, search_params)
 
-    for idx_frame in range(len(tracks_data)-1):
+    for idx_frame in range(len(track_data)-1):
         # frame0_data = tracks_data[0]
-        frame0_data = tracks_data[idx_frame]
-        frame1_data = tracks_data[idx_frame+1]
+        frame0_data = track_data[idx_frame]
+        frame1_data = track_data[idx_frame+1]
 
         frame0_descs = frame0_data['descs_sift']
         frame1_descs = frame1_data['descs_sift']
 
         all_matches = flann.knnMatch(frame0_descs, frame1_descs, k=2)
-        frame0_data[f"match_sift_imagePath={frame0_data['imagePath']}_imagePath={frame1_data['imagePath']}"] = all_matches
+        frame0_data[f"all_matches_sift_imagePath={frame0_data['imagePath']}_imagePath={frame1_data['imagePath']}"] = all_matches
 
         good_matches_idx = []
         good_matches = []
@@ -251,6 +308,9 @@ def match_keypoints(tracks_data):
                 good_matches.append(all_matches[i])
                 good_matches_mask[i] = [1, 0]
 
+        frame0_data[f"good_matches_sift_imagePath={frame0_data['imagePath']}_imagePath={frame1_data['imagePath']}"] = good_matches
+
+        '''
         image0 = frame0_data['imageData']
         image1 = frame1_data['imageData']
         image0_cpy = image0.copy()
@@ -301,9 +361,60 @@ def match_keypoints(tracks_data):
         cv2.imshow('Matched', Matched)
         cv2.waitKey(0)
     cv2.destroyAllWindows()
-
-    return tracks_data
+    '''
+    return track_data
         
+
+def compute_bounding_rectangle(points):
+    x, y, w, h = cv2.boundingRect(points)
+    bbox = [[x, y], [x+w, y+h]]
+    return bbox
+
+
+def compute_centroid_from_matches(track_data):
+    for idx_frame in range(len(track_data)-1):
+        frame0_data = track_data[idx_frame]
+        frame1_data = track_data[idx_frame+1]
+
+        frame0_kps = frame0_data['kps_sift']
+        frame1_kps = frame1_data['kps_sift']
+
+        # frame0_descs = frame0_data['descs_sift']
+        # frame1_descs = frame1_data['descs_sift']
+
+        # frame0_all_matches = frame0_data[f"all_matches_sift_imagePath={frame0_data['imagePath']}_imagePath={frame1_data['imagePath']}"]
+        frame0_good_matches = frame0_data[f"good_matches_sift_imagePath={frame0_data['imagePath']}_imagePath={frame1_data['imagePath']}"]
+
+        # frame0_centroid_good_matches = np.zeros((2,), dtype=np.float32)
+        # frame1_centroid_good_matches = np.zeros((2,), dtype=np.float32)
+        frame0_kps_good_matches = np.zeros((len(frame0_good_matches),2), dtype=np.float32)
+        frame1_kps_good_matches = np.zeros((len(frame0_good_matches),2), dtype=np.float32)
+        for idx_good_match, (good_match, _) in enumerate(frame0_good_matches):
+            kp_good_match_frame0 = frame0_kps[good_match.queryIdx].pt
+            kp_good_match_frame1 = frame1_kps[good_match.trainIdx].pt
+            # frame0_centroid_good_matches += kp_good_match_frame0
+            # frame1_centroid_good_matches += kp_good_match_frame1
+            frame0_kps_good_matches[idx_good_match] = kp_good_match_frame0
+            frame1_kps_good_matches[idx_good_match] = kp_good_match_frame1
+        # frame0_centroid_good_matches /= len(frame0_good_matches)
+        # frame1_centroid_good_matches /= len(frame0_good_matches)
+        frame0_centroid_good_matches = frame0_kps_good_matches.mean(axis=0)
+        frame1_centroid_good_matches = frame1_kps_good_matches.mean(axis=0)
+        # print('frame0_kps_good_matches:', frame0_kps_good_matches)
+        # print('frame1_kps_good_matches:', frame1_kps_good_matches)
+        # print('frame0_centroid_good_matches:', frame0_centroid_good_matches)
+        # print('frame1_centroid_good_matches:', frame1_centroid_good_matches)
+        # sys.exit(0)
+        frame0_data['centroid_good_matches_frame'] = frame0_centroid_good_matches
+        frame0_data['centroid_good_matches_frame+1'] = frame1_centroid_good_matches
+
+        frame0_bounding_rect_good_matches = compute_bounding_rectangle(frame0_kps_good_matches)
+        frame1_bounding_rect_good_matches = compute_bounding_rectangle(frame1_kps_good_matches)
+
+        frame0_data['bounding_rect_good_matches_frame'] = frame0_bounding_rect_good_matches
+        frame0_data['bounding_rect_good_matches_frame+1'] = frame1_bounding_rect_good_matches
+    return track_data
+
 
 def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns):
     for key_pattern in orig_track_patterns[0].keys():
@@ -349,18 +460,25 @@ def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, 
 
         print('Detecting and describing keypoints...')
         orig_track_data_with_kp_desc = detect_describe_keypoints(orig_track_data)
+        corr_track_data_with_kp_desc = detect_describe_keypoints(corr_track_data)
         # sys.exit(0)
 
         print('Filtering keypoints inside car bbox...')
         orig_track_data_with_kp_desc = filter_keypoints(orig_track_data)
+        corr_track_data_with_kp_desc = filter_keypoints(corr_track_data)
 
         print('Matching keypoints....')
         orig_track_data_with_kp_desc_match = match_keypoints(orig_track_data_with_kp_desc)
+        corr_track_data_with_kp_desc_match = match_keypoints(corr_track_data_with_kp_desc)
 
+        print('Computing centroids....')
+        orig_track_data_with_kp_desc_match_centroid = compute_centroid_from_matches(orig_track_data_with_kp_desc_match)
+        corr_track_data_with_kp_desc_match_centroid = compute_centroid_from_matches(corr_track_data_with_kp_desc_match)
         # sys.exit(0)
 
-        # orig_track_patterns = compute_patterns_car_lp_shapes(orig_track_data)
-        # corr_track_patterns = compute_patterns_car_lp_shapes(corr_track_data)
+        print('Computing metrics...')
+        orig_track_patterns = compute_patterns_car_lp_centroid(orig_track_data_with_kp_desc_match_centroid)
+        corr_track_patterns = compute_patterns_car_lp_centroid(corr_track_data_with_kp_desc_match_centroid)
         # for orig_track_pattern in orig_track_patterns:
         #     print('orig_track_pattern:', orig_track_pattern)
 
