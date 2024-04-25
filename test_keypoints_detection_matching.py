@@ -7,9 +7,26 @@ import glob
 from datetime import datetime
 import cv2
 import copy
-
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from screeninfo import get_monitors
+
+
+monitor = None
+for m in get_monitors():
+    if m.is_primary:
+        monitor = m
+        break
+
+#                                     width=-1,   height=768
+def resize_img_keep_aspect_ratio(img, width=1366, height=-1, diff=100):
+    assert width < 0 or height < 0, f'Error, width ({width}) or height ({height}) must be less than 0'
+    if width > 0:
+        scale = (width-diff) / img.shape[1]
+    elif height > 0:
+        scale = (height-diff)  / img.shape[0]
+    img_rescaled = cv2.resize(img, (0, 0), fx=scale, fy=scale)
+    return img_rescaled
 
 
 def parse_args():
@@ -235,7 +252,7 @@ def compute_patterns_car_lp_centroid(track_data):
 
         image0 = draw_bbox_car_lp(image0, frame0_curr_shapes)
         image1 = draw_bbox_car_lp(image1, frame1_curr_shapes)
-        image1 = draw_bbox_car_lp(image1, frame1_corrected_shapes, color_bgr=(0,0,255))
+        image1 = draw_bbox_car_lp(image1, frame1_corrected_shapes, color_bgr=(255,255,100))
 
         image0 = cv2.putText(image0, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
         image1 = cv2.putText(image1, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
@@ -251,7 +268,8 @@ def compute_patterns_car_lp_centroid(track_data):
         image0 = cv2.putText(image0, f'({int(bounding_rect_good_matches_frame0[1][0])},{int(bounding_rect_good_matches_frame0[1][1])})', org=(int(bounding_rect_good_matches_frame0[1][0]), int(bounding_rect_good_matches_frame0[1][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
         
         image0_1 = np.hstack((image0, image1))
-        image0_1 = cv2.resize(image0_1, (0, 0), fx=0.7, fy=0.7)
+        # image0_1 = cv2.resize(image0_1, (0, 0), fx=0.7, fy=0.7)
+        image0_1 = resize_img_keep_aspect_ratio(image0_1, width=monitor.width, height=-1)
         cv2.imshow('image0_1', image0_1)
         cv2.waitKey(0)
     cv2.destroyAllWindows()
