@@ -18,6 +18,14 @@ for m in get_monitors():
         monitor = m
         break
 
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--show-imgs', action='store_true')
+    args = parser.parse_args()
+    return args
+
+
 #                                     width=-1,   height=768
 def resize_img_keep_aspect_ratio(img, width=1366, height=-1, diff=100):
     assert width < 0 or height < 0, f'Error, width ({width}) or height ({height}) must be less than 0'
@@ -27,10 +35,6 @@ def resize_img_keep_aspect_ratio(img, width=1366, height=-1, diff=100):
         scale = (height-diff)  / img.shape[0]
     img_rescaled = cv2.resize(img, (0, 0), fx=scale, fy=scale)
     return img_rescaled
-
-
-def parse_args():
-    return None
 
 
 def make_corrected_tracks_paths(original_tracks, corrected_tracks_folder):
@@ -119,6 +123,31 @@ def get_coords_shape_labelme_format(shape):
     return {'x1': x1, 'y1': y1, 'x2': x2, 'y2': y2, 'x3': x3, 'y3': y3, 'x4': x4, 'y4': y4}
 
 
+def draw_bbox_car_lp(image, shapes_list, color_bgr=(0,255,0)):
+    for idx_shape, shape in enumerate(shapes_list):
+        points = shape['points']
+        points_int = [[round(coord) for coord in point] for point in points]
+        # print('points_int:', points_int)
+        if shape['shape_type'] == 'rectangle':
+            image = cv2.rectangle(image,points_int[0],points_int[1],color_bgr,2)
+            image = cv2.circle(image, center=(int(points_int[0][0]), int(points_int[0][1])), radius=5, color=color_bgr, thickness=-1)
+            image = cv2.circle(image, center=(int(points_int[1][0]), int(points_int[1][1])), radius=5, color=color_bgr, thickness=-1)
+            image = cv2.putText(image, f'({int(points_int[0][0])},{int(points_int[0][1])})', org=(int(points_int[0][0]), int(points_int[0][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+            image = cv2.putText(image, f'({int(points_int[1][0])},{int(points_int[1][1])})', org=(int(points_int[1][0]), int(points_int[1][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+        elif shape['shape_type'] == 'polygon':
+            image = cv2.polylines(image,[np.array(points_int,dtype=np.int32)],True,color_bgr,1)
+            image = cv2.circle(image, center=(int(points_int[0][0]), int(points_int[0][1])), radius=5, color=color_bgr, thickness=-1)
+            image = cv2.circle(image, center=(int(points_int[1][0]), int(points_int[1][1])), radius=5, color=color_bgr, thickness=-1)
+            image = cv2.circle(image, center=(int(points_int[2][0]), int(points_int[2][1])), radius=5, color=color_bgr, thickness=-1)
+            image = cv2.circle(image, center=(int(points_int[3][0]), int(points_int[3][1])), radius=5, color=color_bgr, thickness=-1)
+            image = cv2.putText(image, f'({int(points_int[0][0])},{int(points_int[0][1])})', org=(int(points_int[0][0]), int(points_int[0][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+            image = cv2.putText(image, f'({int(points_int[1][0])},{int(points_int[1][1])})', org=(int(points_int[1][0]), int(points_int[1][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+            image = cv2.putText(image, f'({int(points_int[2][0])},{int(points_int[2][1])})', org=(int(points_int[2][0]), int(points_int[2][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+            image = cv2.putText(image, f'({int(points_int[3][0])},{int(points_int[3][1])})', org=(int(points_int[3][0]), int(points_int[3][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+        
+    return image
+
+'''
 def get_patterns_shapes(car_coords, lp_coords):
     car_width = car_coords['x3'] - car_coords['x1']
     car_height = car_coords['y3'] - car_coords['y1']
@@ -156,31 +185,72 @@ def get_patterns_shapes(car_coords, lp_coords):
     frame_patterns['16_lp_y4_into_bbox_car'] = lp_y4_into_bbox_car
 
     return frame_patterns
+'''
 
 
-def draw_bbox_car_lp(image, shapes_list, color_bgr=(0,255,0)):
-    for idx_shape, shape in enumerate(shapes_list):
+# def get_patterns_shapes(car_coords, lp_coords):
+def get_patterns_shapes(bbox, shapes):
+    # print('shapes:', shapes)
+    # sys.exit(0)
+    car_points = None
+    lp_points = None
+    for shape in shapes:
+        if shape['label'] == 'car':
+            car_points = shape['points']
+        elif shape['label'] == 'lp':
+            lp_points = shape['points']
+    
+    car_width = car_points[1][0] - car_points[0][0]
+    car_height = car_points[1][1] - car_points[0][1]
+    # lp_width = np.linalg.norm(np.array((lp_coords['x2'],lp_coords['y2'])) - np.array((lp_coords['x1'],lp_coords['y1'])))
+    # lp_height = np.linalg.norm(np.array((lp_coords['x3'],lp_coords['y3'])) - np.array((lp_coords['x2'],lp_coords['y2'])))
+    lp_width = np.linalg.norm(np.array(lp_points[1]) - np.array(lp_points[0]))
+    lp_height = np.linalg.norm(np.array(lp_points[2]) - np.array(lp_points[1]))
+
+    lp_x1_into_bbox_car = lp_points[0][0] - car_points[0][0]  # lp_coords['x1'] - car_coords['x1']
+    lp_y1_into_bbox_car = lp_points[0][1] - car_points[0][1]  # lp_coords['y1'] - car_coords['y1']
+    lp_x2_into_bbox_car = lp_points[1][0] - car_points[0][0]  # lp_coords['x2'] - car_coords['x1']
+    lp_y2_into_bbox_car = lp_points[1][1] - car_points[0][1]  # lp_coords['y2'] - car_coords['y1']
+    lp_x3_into_bbox_car = lp_points[2][0] - car_points[0][0]  # lp_coords['x3'] - car_coords['x1']
+    lp_y3_into_bbox_car = lp_points[2][1] - car_points[0][1]  # lp_coords['y3'] - car_coords['y1']
+    lp_x4_into_bbox_car = lp_points[3][0] - car_points[0][0]  # lp_coords['x4'] - car_coords['x1']
+    lp_y4_into_bbox_car = lp_points[3][1] - car_points[0][1]  # lp_coords['y4'] - car_coords['y1']
+
+    frame_patterns = {}
+    frame_patterns['00_car_width'] = car_width
+    frame_patterns['01_car_height'] = car_height
+    frame_patterns['02_car_aspect_ratio'] = car_height / car_width
+    frame_patterns['03_lp_width'] = lp_width
+    frame_patterns['04_lp_height'] = lp_height
+    frame_patterns['05_width_ratio'] = car_width / lp_width
+    frame_patterns['06_height_ratio'] = car_height / lp_height
+    frame_patterns['07_horiz_posit_ratio'] = car_width / lp_x1_into_bbox_car
+    frame_patterns['08_verti_posit_ratio'] = car_height / lp_y1_into_bbox_car
+    frame_patterns['09_lp_x1_into_bbox_car'] = lp_x1_into_bbox_car
+    frame_patterns['10_lp_y1_into_bbox_car'] = lp_y1_into_bbox_car
+    frame_patterns['11_lp_x2_into_bbox_car'] = lp_x2_into_bbox_car
+    frame_patterns['12_lp_y2_into_bbox_car'] = lp_y2_into_bbox_car
+    frame_patterns['13_lp_x3_into_bbox_car'] = lp_x3_into_bbox_car
+    frame_patterns['14_lp_y3_into_bbox_car'] = lp_y3_into_bbox_car
+    frame_patterns['15_lp_x4_into_bbox_car'] = lp_x4_into_bbox_car
+    frame_patterns['16_lp_y4_into_bbox_car'] = lp_y4_into_bbox_car
+
+    return frame_patterns
+
+
+'''
+def get_patterns_shapes(bbox, shapes):
+    all_props_points_to_bbox = [None] * len(shapes)
+    for idx_shape, shape in enumerate(shapes):
         points = shape['points']
-        points_int = [[round(coord) for coord in point] for point in points]
-        # print('points_int:', points_int)
-        if shape['shape_type'] == 'rectangle':
-            image = cv2.rectangle(image,points_int[0],points_int[1],color_bgr,2)
-            image = cv2.circle(image, center=(int(points_int[0][0]), int(points_int[0][1])), radius=5, color=color_bgr, thickness=-1)
-            image = cv2.circle(image, center=(int(points_int[1][0]), int(points_int[1][1])), radius=5, color=color_bgr, thickness=-1)
-            image = cv2.putText(image, f'({int(points_int[0][0])},{int(points_int[0][1])})', org=(int(points_int[0][0]), int(points_int[0][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
-            image = cv2.putText(image, f'({int(points_int[1][0])},{int(points_int[1][1])})', org=(int(points_int[1][0]), int(points_int[1][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
-        elif shape['shape_type'] == 'polygon':
-            image = cv2.polylines(image,[np.array(points_int,dtype=np.int32)],True,color_bgr,1)
-            image = cv2.circle(image, center=(int(points_int[0][0]), int(points_int[0][1])), radius=5, color=color_bgr, thickness=-1)
-            image = cv2.circle(image, center=(int(points_int[1][0]), int(points_int[1][1])), radius=5, color=color_bgr, thickness=-1)
-            image = cv2.circle(image, center=(int(points_int[2][0]), int(points_int[2][1])), radius=5, color=color_bgr, thickness=-1)
-            image = cv2.circle(image, center=(int(points_int[3][0]), int(points_int[3][1])), radius=5, color=color_bgr, thickness=-1)
-            image = cv2.putText(image, f'({int(points_int[0][0])},{int(points_int[0][1])})', org=(int(points_int[0][0]), int(points_int[0][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
-            image = cv2.putText(image, f'({int(points_int[1][0])},{int(points_int[1][1])})', org=(int(points_int[1][0]), int(points_int[1][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
-            image = cv2.putText(image, f'({int(points_int[2][0])},{int(points_int[2][1])})', org=(int(points_int[2][0]), int(points_int[2][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
-            image = cv2.putText(image, f'({int(points_int[3][0])},{int(points_int[3][1])})', org=(int(points_int[3][0]), int(points_int[3][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=color_bgr, thickness=1, lineType=cv2.LINE_AA)
+        props_points_to_bbox = get_patterns_bbox_points(bbox, points)
         
-    return image
+        # print('shape:', shape)
+        all_props_points_to_bbox[idx_shape] = {shape['label']: props_points_to_bbox}
+        # sys.exit(0)
+
+    return all_props_points_to_bbox
+'''
 
 
 def get_patterns_bbox_points(bbox, points):
@@ -224,8 +294,8 @@ def correct_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_
     return frame1_corrected_shapes
 
 
-def compute_patterns_car_lp_centroid(track_data):
-    frames_patterns = []
+def correct_track_compute_patterns_bbox_car_lp(args,track_data):
+    frames_patterns = [None] * len(track_data)
     for idx_frame in range(len(track_data)-1):
         frame0_data = track_data[idx_frame]
         frame1_data = track_data[idx_frame+1]
@@ -246,32 +316,41 @@ def compute_patterns_car_lp_centroid(track_data):
                                                                bounding_rect_good_matches_frame1, frame1_curr_shapes)
         frame1_data['shapes'] = frame1_corrected_shapes
 
-        # ONLY FOR VISUALIZATION (TESTS)
-        image0 = frame0_data['imageData'].copy()
-        image1 = frame1_data['imageData'].copy()
-
-        image0 = draw_bbox_car_lp(image0, frame0_curr_shapes)
-        image1 = draw_bbox_car_lp(image1, frame1_curr_shapes)
-        image1 = draw_bbox_car_lp(image1, frame1_corrected_shapes, color_bgr=(255,255,100))
-
-        image0 = cv2.putText(image0, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
-        image1 = cv2.putText(image1, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
-        image0 = cv2.circle(image0, center=(int(centroid_good_matches_frame0[0]), int(centroid_good_matches_frame0[1])), radius=7, color=(255,0,0), thickness=4)
-        image1 = cv2.circle(image1, center=(int(centroid_good_matches_frame1[0]), int(centroid_good_matches_frame1[1])), radius=7, color=(255,0,0), thickness=4)
+        frame0_patterns_curr_shapes = get_patterns_shapes(bounding_rect_good_matches_frame0, frame0_curr_shapes)
+        frame1_patterns_curr_shapes = get_patterns_shapes(bounding_rect_good_matches_frame1, frame1_curr_shapes)
+        frame1_patterns_corrected_shapes = get_patterns_shapes(bounding_rect_good_matches_frame1, frame1_corrected_shapes)
+        frames_patterns[idx_frame] = {'frame0_patterns_curr_shapes': frame0_patterns_curr_shapes,
+                                      'frame1_patterns_curr_shapes': frame1_patterns_curr_shapes,
+                                      'frame1_patterns_corrected_shapes': frame1_patterns_corrected_shapes}
         
-        color_bbox_kps = (255,0,0)
-        image0 = cv2.rectangle(image0,bounding_rect_good_matches_frame0[0],bounding_rect_good_matches_frame0[1],color_bbox_kps,2)
-        image1 = cv2.rectangle(image1,bounding_rect_good_matches_frame1[0],bounding_rect_good_matches_frame1[1],color_bbox_kps,2)
-        image0 = cv2.circle(image0, center=(int(bounding_rect_good_matches_frame0[0][0]), int(bounding_rect_good_matches_frame0[0][1])), radius=7, color=color_bbox_kps, thickness=-1)
-        image0 = cv2.circle(image0, center=(int(bounding_rect_good_matches_frame0[1][0]), int(bounding_rect_good_matches_frame0[1][1])), radius=7, color=color_bbox_kps, thickness=-1)
-        image0 = cv2.putText(image0, f'({int(bounding_rect_good_matches_frame0[0][0])},{int(bounding_rect_good_matches_frame0[0][1])})', org=(int(bounding_rect_good_matches_frame0[0][0]), int(bounding_rect_good_matches_frame0[0][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
-        image0 = cv2.putText(image0, f'({int(bounding_rect_good_matches_frame0[1][0])},{int(bounding_rect_good_matches_frame0[1][1])})', org=(int(bounding_rect_good_matches_frame0[1][0]), int(bounding_rect_good_matches_frame0[1][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
-        
-        image0_1 = np.hstack((image0, image1))
-        # image0_1 = cv2.resize(image0_1, (0, 0), fx=0.7, fy=0.7)
-        image0_1 = resize_img_keep_aspect_ratio(image0_1, width=monitor.width, height=-1)
-        cv2.imshow('image0_1', image0_1)
-        cv2.waitKey(0)
+        if args.show_imgs:
+            # ONLY FOR VISUALIZATION (TESTS)
+            image0 = frame0_data['imageData'].copy()
+            image1 = frame1_data['imageData'].copy()
+
+            image0 = draw_bbox_car_lp(image0, frame0_curr_shapes)
+            image1 = draw_bbox_car_lp(image1, frame1_curr_shapes)
+            image1 = draw_bbox_car_lp(image1, frame1_corrected_shapes, color_bgr=(255,255,100))
+
+            image0 = cv2.putText(image0, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
+            image1 = cv2.putText(image1, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
+            image0 = cv2.circle(image0, center=(int(centroid_good_matches_frame0[0]), int(centroid_good_matches_frame0[1])), radius=7, color=(255,0,0), thickness=4)
+            image1 = cv2.circle(image1, center=(int(centroid_good_matches_frame1[0]), int(centroid_good_matches_frame1[1])), radius=7, color=(255,0,0), thickness=4)
+            
+            color_bbox_kps = (255,0,0)
+            image0 = cv2.rectangle(image0,bounding_rect_good_matches_frame0[0],bounding_rect_good_matches_frame0[1],color_bbox_kps,2)
+            image1 = cv2.rectangle(image1,bounding_rect_good_matches_frame1[0],bounding_rect_good_matches_frame1[1],color_bbox_kps,2)
+            image0 = cv2.circle(image0, center=(int(bounding_rect_good_matches_frame0[0][0]), int(bounding_rect_good_matches_frame0[0][1])), radius=7, color=color_bbox_kps, thickness=-1)
+            image0 = cv2.circle(image0, center=(int(bounding_rect_good_matches_frame0[1][0]), int(bounding_rect_good_matches_frame0[1][1])), radius=7, color=color_bbox_kps, thickness=-1)
+            image0 = cv2.putText(image0, f'({int(bounding_rect_good_matches_frame0[0][0])},{int(bounding_rect_good_matches_frame0[0][1])})', org=(int(bounding_rect_good_matches_frame0[0][0]), int(bounding_rect_good_matches_frame0[0][1])-15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
+            image0 = cv2.putText(image0, f'({int(bounding_rect_good_matches_frame0[1][0])},{int(bounding_rect_good_matches_frame0[1][1])})', org=(int(bounding_rect_good_matches_frame0[1][0]), int(bounding_rect_good_matches_frame0[1][1])+15), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255,0,0), thickness=1, lineType=cv2.LINE_AA)
+            
+            image0_1 = np.hstack((image0, image1))
+            # image0_1 = cv2.resize(image0_1, (0, 0), fx=0.7, fy=0.7)
+            image0_1 = resize_img_keep_aspect_ratio(image0_1, width=monitor.width, height=-1)
+            cv2.imshow('image0_1', image0_1)
+            cv2.waitKey(0)
+    
     cv2.destroyAllWindows()
     # sys.exit(0)
     return frames_patterns
@@ -430,7 +509,7 @@ def compute_bounding_rectangle(points):
     return bbox
 
 
-def compute_centroid_from_matches(track_data):
+def compute_bbox_centroid_from_good_matches(track_data):
     for idx_frame in range(len(track_data)-1):
         frame0_data = track_data[idx_frame]
         frame1_data = track_data[idx_frame+1]
@@ -475,13 +554,49 @@ def compute_centroid_from_matches(track_data):
     return track_data
 
 
+'''
+def plot_track_patterns(writer, track_name, track_patterns):
+    # print('orig_track_patterns:', orig_track_patterns)
+    for idx_frame_patterns, frame_patterns in enumerate(track_patterns):
+        if not frame_patterns is None:
+            # keys_frames = ['frame1_patterns_curr_shapes', 'frame1_patterns_corrected_shapes']
+            for key_frame_type in frame_patterns.keys():   # ['frame0_patterns_curr_shapes', 'frame1_patterns_curr_shapes', 'frame1_patterns_corrected_shapes']
+                shapes_patterns = frame_patterns[key_frame_type]
+                for idx_shape, shape_patterns in enumerate(shapes_patterns):
+                    for key_shape_pattern in shape_patterns.keys():   # ['car', 'lp']
+                        points_patterns = shape_patterns[key_shape_pattern]
+                        for idx_point_patterns, (x_prop, y_prop) in enumerate(points_patterns):
+                            writer.add_scalars(f'{track_name}/{key_frame_type}_{key_shape_pattern}',
+                                                {'x_prop': x_prop,
+                                                 'y_prop': y_prop},
+                                                 idx_frame_patterns)
+    # sys.exit(0)
+'''
+
+
 def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns):
-    for key_pattern in orig_track_patterns[0].keys():
-        for idx_frame, (orig_track_pattern, corr_track_pattern) in enumerate(zip(orig_track_patterns, corr_track_patterns)):
-            writer.add_scalars(f'{track_name}/{key_pattern}',
-                {'orig': orig_track_pattern[key_pattern],
-                 'corr': corr_track_pattern[key_pattern]},
-                 idx_frame)
+    # print('orig_track_patterns:', orig_track_patterns)
+    # sys.exit(0)
+    for idx_frame in range(len(orig_track_patterns)):
+        if not orig_track_patterns[idx_frame] is None:
+            orig_frame_patterns = orig_track_patterns[idx_frame]
+            corr_frame_patterns = corr_track_patterns[idx_frame]
+            # print('orig_track_pattern:', orig_track_pattern)
+            # sys.exit(0)
+            for key_frame_type in orig_frame_patterns.keys():
+                for key_pattern in orig_frame_patterns[key_frame_type].keys():
+                    # print('orig_frame_patterns[key_frame_type]:', orig_frame_patterns[key_frame_type])
+                    # sys.exit(0)
+                    writer.add_scalars(f'{track_name}/{key_frame_type}/{key_pattern}',
+                            {'orig': orig_frame_patterns[key_frame_type][key_pattern],
+                            'corr': corr_frame_patterns[key_frame_type][key_pattern]},
+                            idx_frame)
+
+                    # for idx_frame, (orig_track_pattern, corr_track_pattern) in enumerate(zip(orig_track_patterns, corr_track_patterns)):
+                    #     writer.add_scalars(f'{track_name}/{key_pattern}',
+                    #         {'orig': orig_track_pattern[key_pattern],
+                    #         'corr': corr_track_pattern[key_pattern]},
+                    #         idx_frame)
     # sys.exit(0) 
 
 
@@ -531,18 +646,17 @@ def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, 
         corr_track_data_with_kp_desc_match = match_keypoints(corr_track_data_with_kp_desc)
 
         print('Computing centroids....')
-        orig_track_data_with_kp_desc_match_centroid = compute_centroid_from_matches(orig_track_data_with_kp_desc_match)
-        corr_track_data_with_kp_desc_match_centroid = compute_centroid_from_matches(corr_track_data_with_kp_desc_match)
+        orig_track_data_with_kp_desc_matches_bbox_centroid = compute_bbox_centroid_from_good_matches(orig_track_data_with_kp_desc_match)
+        corr_track_data_with_kp_desc_matches_bbox_centroid = compute_bbox_centroid_from_good_matches(corr_track_data_with_kp_desc_match)
         # sys.exit(0)
 
-        print('Computing metrics...')
-        orig_track_patterns = compute_patterns_car_lp_centroid(orig_track_data_with_kp_desc_match_centroid)
-        corr_track_patterns = compute_patterns_car_lp_centroid(corr_track_data_with_kp_desc_match_centroid)
-        # for orig_track_pattern in orig_track_patterns:
-        #     print('orig_track_pattern:', orig_track_pattern)
+        print('Correcting shapes points and computing patterns...')
+        orig_track_patterns = correct_track_compute_patterns_bbox_car_lp(args, orig_track_data_with_kp_desc_matches_bbox_centroid)
+        corr_track_patterns = correct_track_compute_patterns_bbox_car_lp(args, corr_track_data_with_kp_desc_matches_bbox_centroid)
 
-        # print('Saving charts...')
-        # plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns)
+        print('Saving charts...')
+        plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns)
+        # plot_track_patterns(writer, track_name, corr_track_patterns)
         print('----------')
 
     # print(f'Logs saved in \'{path_save_plots}\'')
@@ -553,16 +667,16 @@ def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, 
 if __name__ == '__main__':
     args = parse_args()
 
-    # original_tracks = [
-    #     './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition',
-    #     './vehicle_tracks_valfride/vehicle_000004',
-    #     './vehicle_tracks_valfride/vehicle_000006',
-    #     './vehicle_tracks_valfride/vehicle_000010',
-    # ]
-
     original_tracks = [
-        './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition'
+        './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition',
+        './vehicle_tracks_valfride/vehicle_000004',
+        './vehicle_tracks_valfride/vehicle_000006',
+        './vehicle_tracks_valfride/vehicle_000010',
     ]
+
+    # original_tracks = [
+    #     './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition'
+    # ]
 
     corrected_tracks_folder = 'corrected'
 
