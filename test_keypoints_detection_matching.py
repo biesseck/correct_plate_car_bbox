@@ -667,16 +667,16 @@ def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, 
 if __name__ == '__main__':
     args = parse_args()
 
-    original_tracks = [
-        './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition',
-        './vehicle_tracks_valfride/vehicle_000004',
-        './vehicle_tracks_valfride/vehicle_000006',
-        './vehicle_tracks_valfride/vehicle_000010',
-    ]
-
     # original_tracks = [
-    #     './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition'
+    #     './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition',
+    #     './vehicle_tracks_valfride/vehicle_000004',
+    #     './vehicle_tracks_valfride/vehicle_000006',
+    #     './vehicle_tracks_valfride/vehicle_000010',
     # ]
+
+    original_tracks = [
+        './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition'
+    ]
 
     corrected_tracks_folder = 'corrected'
 
