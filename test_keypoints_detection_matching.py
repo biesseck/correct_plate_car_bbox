@@ -37,18 +37,18 @@ def resize_img_keep_aspect_ratio(img, width=1366, height=-1, diff=100):
     return img_rescaled
 
 
-def make_corrected_tracks_paths(original_tracks, corrected_tracks_folder):
-    corrected_tracks = [None] * len(original_tracks)
+def make_groundtruth_tracks_paths(original_tracks, groundtruth_tracks_folder):
+    groundtruth_tracks = [None] * len(original_tracks)
     for idx, original_track in enumerate(original_tracks):
         assert os.path.isdir(original_track), f'Error, could not find original track path: \'{original_track}\''
         original_track = original_track.rstrip('/')
         parent_path = '/'.join(original_track.split('/')[:-1])
         track_name = original_track.split('/')[-1]
-        corrected_tracks[idx] = os.path.join(parent_path, corrected_tracks_folder, track_name)
-        assert os.path.isdir(corrected_tracks[idx]), f'Error, corrected track path is not valid: \'{corrected_tracks[idx]}\''
-    #     print('corrected_tracks[idx]:', corrected_tracks[idx])
+        groundtruth_tracks[idx] = os.path.join(parent_path, groundtruth_tracks_folder, track_name)
+        assert os.path.isdir(groundtruth_tracks[idx]), f'Error, groundtruth track path is not valid: \'{groundtruth_tracks[idx]}\''
+    #     print('groundtruth_tracks[idx]:', groundtruth_tracks[idx])
     # sys.exit(0)
-    return corrected_tracks
+    return groundtruth_tracks
 
 
 def find_track_files(path_track, ext='.json'):
@@ -62,7 +62,7 @@ def find_track_files(path_track, ext='.json'):
     return paths_jsons
 
 
-def filter_orig_track_files_by_corrected(orig_track_files, corr_track_files):
+def filter_orig_track_files_by_groundtruth(orig_track_files, corr_track_files):
     filtered_orig_track_files = []
     ignored_orig_track_files = []
     corr_track_filesnames = [file.split('/')[-1] for file in corr_track_files]
@@ -268,33 +268,33 @@ def get_patterns_bbox_points(bbox, points):
     return props_points_to_bbox
 
 
-def correct_points_from_props(bbox, curr_points, right_props):
+def predict_points_from_props(bbox, curr_points, right_props):
     bbox_width, bbox_height = np.array(bbox[1]) - np.array(bbox[0])
-    corrected_points_to_bbox = [None] * len(curr_points)
+    pred_points_to_bbox = [None] * len(curr_points)
     for idx_prop, right_prop in enumerate(right_props):
         reference = bbox[0]   # top left point of bbox
-        x_correct, y_correct = np.array(reference) - (np.array([bbox_width, bbox_height]) * right_prop)
-        corrected_points_to_bbox[idx_prop] = (x_correct, y_correct)
-    return corrected_points_to_bbox
+        x_pred, y_pred = np.array(reference) - (np.array([bbox_width, bbox_height]) * right_prop)
+        pred_points_to_bbox[idx_prop] = (x_pred, y_pred)
+    return pred_points_to_bbox
 
 
-def correct_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_shapes,
+def predict_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_shapes,
                                  bounding_rect_good_matches_frame1, frame1_curr_shapes):
     # print('frame1_curr_shapes:', frame1_curr_shapes)
     # sys.exit(0)
-    frame1_corrected_shapes = copy.deepcopy(frame1_curr_shapes)
-    for idx_shape, (frame0_curr_shape, frame1_curr_shape, frame1_corrected_shape) in enumerate(zip(frame0_curr_shapes, frame1_curr_shapes, frame1_corrected_shapes)):
+    frame1_pred_shapes = copy.deepcopy(frame1_curr_shapes)
+    for idx_shape, (frame0_curr_shape, frame1_curr_shape, frame1_pred_shape) in enumerate(zip(frame0_curr_shapes, frame1_curr_shapes, frame1_pred_shapes)):
         frame0_curr_points = frame0_curr_shape['points']
         frame0_right_props = get_patterns_bbox_points(bounding_rect_good_matches_frame0, frame0_curr_points)
 
         frame1_curr_points = frame1_curr_shape['points']
-        frame0_corrected_points = correct_points_from_props(bounding_rect_good_matches_frame1, frame1_curr_points, frame0_right_props)
+        frame0_pred_points = predict_points_from_props(bounding_rect_good_matches_frame1, frame1_curr_points, frame0_right_props)
     
-        frame1_corrected_shape['points'] = frame0_corrected_points
-    return frame1_corrected_shapes
+        frame1_pred_shape['points'] = frame0_pred_points
+    return frame1_pred_shapes
 
 
-def correct_track_compute_patterns_bbox_car_lp(args,track_data):
+def predict_track_compute_patterns_bbox_car_lp(args,track_data):
     frames_patterns = [None] * len(track_data)
     for idx_frame in range(len(track_data)-1):
         frame0_data = track_data[idx_frame]
@@ -312,16 +312,16 @@ def correct_track_compute_patterns_bbox_car_lp(args,track_data):
 
         frame0_curr_shapes = frame0_data['shapes']
         frame1_curr_shapes = frame1_data['shapes']
-        frame1_corrected_shapes = correct_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_shapes,
+        frame1_pred_shapes = predict_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_shapes,
                                                                bounding_rect_good_matches_frame1, frame1_curr_shapes)
-        frame1_data['shapes'] = frame1_corrected_shapes
+        frame1_data['shapes'] = frame1_pred_shapes
 
         frame0_patterns_curr_shapes = get_patterns_shapes(bounding_rect_good_matches_frame0, frame0_curr_shapes)
         frame1_patterns_curr_shapes = get_patterns_shapes(bounding_rect_good_matches_frame1, frame1_curr_shapes)
-        frame1_patterns_corrected_shapes = get_patterns_shapes(bounding_rect_good_matches_frame1, frame1_corrected_shapes)
+        frame1_patterns_pred_shapes = get_patterns_shapes(bounding_rect_good_matches_frame1, frame1_pred_shapes)
         frames_patterns[idx_frame] = {'frame0_patterns_curr_shapes': frame0_patterns_curr_shapes,
                                       'frame1_patterns_curr_shapes': frame1_patterns_curr_shapes,
-                                      'frame1_patterns_corrected_shapes': frame1_patterns_corrected_shapes}
+                                      'frame1_patterns_pred_shapes': frame1_patterns_pred_shapes}
         
         if args.show_imgs:
             # ONLY FOR VISUALIZATION (TESTS)
@@ -330,7 +330,7 @@ def correct_track_compute_patterns_bbox_car_lp(args,track_data):
 
             image0 = draw_bbox_car_lp(image0, frame0_curr_shapes)
             image1 = draw_bbox_car_lp(image1, frame1_curr_shapes)
-            image1 = draw_bbox_car_lp(image1, frame1_corrected_shapes, color_bgr=(255,255,100))
+            image1 = draw_bbox_car_lp(image1, frame1_pred_shapes, color_bgr=(255,255,100))
 
             image0 = cv2.putText(image0, frame0_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
             image1 = cv2.putText(image1, frame1_data['imagePath'], org=(50, 50), fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1, color=(255,0,0), thickness = 2, lineType=cv2.LINE_AA)
@@ -554,26 +554,6 @@ def compute_bbox_centroid_from_good_matches(track_data):
     return track_data
 
 
-'''
-def plot_track_patterns(writer, track_name, track_patterns):
-    # print('orig_track_patterns:', orig_track_patterns)
-    for idx_frame_patterns, frame_patterns in enumerate(track_patterns):
-        if not frame_patterns is None:
-            # keys_frames = ['frame1_patterns_curr_shapes', 'frame1_patterns_corrected_shapes']
-            for key_frame_type in frame_patterns.keys():   # ['frame0_patterns_curr_shapes', 'frame1_patterns_curr_shapes', 'frame1_patterns_corrected_shapes']
-                shapes_patterns = frame_patterns[key_frame_type]
-                for idx_shape, shape_patterns in enumerate(shapes_patterns):
-                    for key_shape_pattern in shape_patterns.keys():   # ['car', 'lp']
-                        points_patterns = shape_patterns[key_shape_pattern]
-                        for idx_point_patterns, (x_prop, y_prop) in enumerate(points_patterns):
-                            writer.add_scalars(f'{track_name}/{key_frame_type}_{key_shape_pattern}',
-                                                {'x_prop': x_prop,
-                                                 'y_prop': y_prop},
-                                                 idx_frame_patterns)
-    # sys.exit(0)
-'''
-
-
 def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns):
     # print('orig_track_patterns:', orig_track_patterns)
     # sys.exit(0)
@@ -589,7 +569,7 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
                     # sys.exit(0)
                     writer.add_scalars(f'{track_name}_{key_frame_type}/{key_pattern}',
                             {'orig': orig_frame_patterns[key_frame_type][key_pattern],
-                            'corr': corr_frame_patterns[key_frame_type][key_pattern]},
+                             'pred': corr_frame_patterns[key_frame_type][key_pattern]},
                             idx_frame)
                     writer.flush()
 
@@ -602,33 +582,33 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
     writer.close()
 
 
-def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, path_save_plots):
+def main_detect_match_keypoints(args, original_tracks, groundtruth_tracks_folder, path_save_plots):
     date_time = datetime.now().strftime("%m%d%Y_%H%M%S")
     path_save_plots = path_save_plots + '/' + date_time
     os.makedirs(path_save_plots)
     writer = SummaryWriter(path_save_plots)
 
-    corrected_tracks = make_corrected_tracks_paths(original_tracks, corrected_tracks_folder)
+    groundtruth_tracks = make_groundtruth_tracks_paths(original_tracks, groundtruth_tracks_folder)
 
-    for orig_track, corr_track in zip(original_tracks, corrected_tracks):
+    for orig_track, gt_track in zip(original_tracks, groundtruth_tracks):
         print('orig_track:', orig_track)
-        print('corr_track:', corr_track)
+        print('gt_track:', gt_track)
         track_name = orig_track.split('/')[-1]
         print(f'Searching files of track \'{orig_track}\'')
         orig_track_files = find_track_files(orig_track, '.json')
-        print(f'Searching files of track \'{corr_track}\'')
-        corr_track_files = find_track_files(corr_track, '.json')
+        print(f'Searching files of track \'{gt_track}\'')
+        gt_track_files = find_track_files(gt_track, '.json')
         # print('len(orig_track_files):', len(orig_track_files))
-        # print('len(corr_track_files):', len(corr_track_files))
+        # print('len(gt_track_files):', len(gt_track_files))
         # sys.exit(0)
 
         print(f'Filtering track files...')
-        filter_orig_track_files = filter_orig_track_files_by_corrected(orig_track_files, corr_track_files)
+        filter_orig_track_files = filter_orig_track_files_by_groundtruth(orig_track_files, gt_track_files)
 
         print(f'Loading files of track \'{orig_track}\'')
         orig_track_data = load_track_data(filter_orig_track_files)
-        print(f'Loading files of track \'{corr_track}\'')
-        corr_track_data = load_track_data(corr_track_files)
+        print(f'Loading files of track \'{gt_track}\'')
+        gt_track_data = load_track_data(gt_track_files)
         # print('orig_track_shapes:', orig_track_shapes)
         # for orig_track in orig_track_shapes:
         #     print('orig_track:', orig_track)
@@ -636,29 +616,29 @@ def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, 
 
         print('Detecting and describing keypoints...')
         orig_track_data_with_kp_desc = detect_describe_keypoints(orig_track_data)
-        corr_track_data_with_kp_desc = detect_describe_keypoints(corr_track_data)
+        gt_track_data_with_kp_desc = detect_describe_keypoints(gt_track_data)
         # sys.exit(0)
 
         print('Filtering keypoints inside car bbox...')
         orig_track_data_with_kp_desc = filter_keypoints(orig_track_data)
-        corr_track_data_with_kp_desc = filter_keypoints(corr_track_data)
+        gt_track_data_with_kp_desc = filter_keypoints(gt_track_data)
 
         print('Matching keypoints....')
         orig_track_data_with_kp_desc_match = match_keypoints(orig_track_data_with_kp_desc)
-        corr_track_data_with_kp_desc_match = match_keypoints(corr_track_data_with_kp_desc)
+        gt_track_data_with_kp_desc_match = match_keypoints(gt_track_data_with_kp_desc)
 
         print('Computing centroids....')
         orig_track_data_with_kp_desc_matches_bbox_centroid = compute_bbox_centroid_from_good_matches(orig_track_data_with_kp_desc_match)
-        corr_track_data_with_kp_desc_matches_bbox_centroid = compute_bbox_centroid_from_good_matches(corr_track_data_with_kp_desc_match)
+        gt_track_data_with_kp_desc_matches_bbox_centroid = compute_bbox_centroid_from_good_matches(gt_track_data_with_kp_desc_match)
         # sys.exit(0)
 
-        print('Correcting shapes points and computing patterns...')
-        orig_track_patterns = correct_track_compute_patterns_bbox_car_lp(args, orig_track_data_with_kp_desc_matches_bbox_centroid)
-        corr_track_patterns = correct_track_compute_patterns_bbox_car_lp(args, corr_track_data_with_kp_desc_matches_bbox_centroid)
+        print('Predicting shapes points and computing patterns...')
+        orig_track_patterns = predict_track_compute_patterns_bbox_car_lp(args, orig_track_data_with_kp_desc_matches_bbox_centroid)
+        gt_track_patterns = predict_track_compute_patterns_bbox_car_lp(args, gt_track_data_with_kp_desc_matches_bbox_centroid)
 
         print('Saving charts...')
-        plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns)
-        # plot_track_patterns(writer, track_name, corr_track_patterns)
+        plot_track_patterns(writer, track_name, orig_track_patterns, gt_track_patterns)
+        # plot_track_patterns(writer, track_name, gt_track_patterns)
         print('----------')
 
     # print(f'Logs saved in \'{path_save_plots}\'')
@@ -680,16 +660,10 @@ if __name__ == '__main__':
         './vehicle_tracks_valfride/vehicle_000010_NoFrameRepetition'
     ]
 
-    corrected_tracks_folder = 'corrected'
-
-    # corrected_tracks = [
-    #     './vehicle_tracks_valfride/corrected/vehicle_000004',
-    #     './vehicle_tracks_valfride/corrected/vehicle_000006',
-    #     './vehicle_tracks_valfride/corrected/vehicle_000010',
-    # ]
+    groundtruth_tracks_folder = 'groundtruth'
 
     path_save_plots = './logs_analysis/keypoints'
 
-    main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, path_save_plots)
+    main_detect_match_keypoints(args, original_tracks, groundtruth_tracks_folder, path_save_plots)
 
     print('\nFinished!')
