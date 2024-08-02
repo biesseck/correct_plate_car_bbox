@@ -294,7 +294,7 @@ def predict_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_
     return frame1_pred_shapes
 
 
-def predict_track_compute_patterns_bbox_car_lp(args,track_data):
+def predict_track_compute_patterns_bbox_car_lp(args, track_data):
     frames_patterns = [None] * len(track_data)
     for idx_frame in range(len(track_data)-1):
         frame0_data = track_data[idx_frame]
@@ -313,7 +313,7 @@ def predict_track_compute_patterns_bbox_car_lp(args,track_data):
         frame0_curr_shapes = frame0_data['shapes']
         frame1_curr_shapes = frame1_data['shapes']
         frame1_pred_shapes = predict_shapes_from_bbox_kps(bounding_rect_good_matches_frame0, frame0_curr_shapes,
-                                                               bounding_rect_good_matches_frame1, frame1_curr_shapes)
+                                                          bounding_rect_good_matches_frame1, frame1_curr_shapes)
         frame1_data['shapes'] = frame1_pred_shapes
 
         frame0_patterns_curr_shapes = get_patterns_shapes(bounding_rect_good_matches_frame0, frame0_curr_shapes)
@@ -554,13 +554,13 @@ def compute_bbox_centroid_from_good_matches(track_data):
     return track_data
 
 
-def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patterns):
+def plot_track_patterns(writer, track_name, orig_track_patterns, gt_track_patterns):
     # print('orig_track_patterns:', orig_track_patterns)
     # sys.exit(0)
     for idx_frame in range(len(orig_track_patterns)):
         if not orig_track_patterns[idx_frame] is None:
             orig_frame_patterns = orig_track_patterns[idx_frame]
-            corr_frame_patterns = corr_track_patterns[idx_frame]
+            gt_frame_patterns = gt_track_patterns[idx_frame]
             # print('orig_track_pattern:', orig_track_pattern)
             # sys.exit(0)
             for key_frame_type in orig_frame_patterns.keys():
@@ -569,7 +569,7 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
                     # sys.exit(0)
                     writer.add_scalars(f'{track_name}_{key_frame_type}/{key_pattern}',
                             {'orig': orig_frame_patterns[key_frame_type][key_pattern],
-                             'pred': corr_frame_patterns[key_frame_type][key_pattern]},
+                             'gt': gt_frame_patterns[key_frame_type][key_pattern]},
                             idx_frame)
                     writer.flush()
 
