@@ -587,7 +587,7 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
                 for key_pattern in orig_frame_patterns[key_frame_type].keys():
                     # print('orig_frame_patterns[key_frame_type]:', orig_frame_patterns[key_frame_type])
                     # sys.exit(0)
-                    writer.add_scalars(f'{track_name}/{key_frame_type}/{key_pattern}',
+                    writer.add_scalars(f'{track_name}_{key_frame_type}/{key_pattern}',
                             {'orig': orig_frame_patterns[key_frame_type][key_pattern],
                             'corr': corr_frame_patterns[key_frame_type][key_pattern]},
                             idx_frame)
