@@ -591,6 +591,7 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
                             {'orig': orig_frame_patterns[key_frame_type][key_pattern],
                             'corr': corr_frame_patterns[key_frame_type][key_pattern]},
                             idx_frame)
+                    writer.flush()
 
                     # for idx_frame, (orig_track_pattern, corr_track_pattern) in enumerate(zip(orig_track_patterns, corr_track_patterns)):
                     #     writer.add_scalars(f'{track_name}/{key_pattern}',
@@ -598,6 +599,7 @@ def plot_track_patterns(writer, track_name, orig_track_patterns, corr_track_patt
                     #         'corr': corr_track_pattern[key_pattern]},
                     #         idx_frame)
     # sys.exit(0) 
+    writer.close()
 
 
 def main_detect_match_keypoints(args, original_tracks, corrected_tracks_folder, path_save_plots):
